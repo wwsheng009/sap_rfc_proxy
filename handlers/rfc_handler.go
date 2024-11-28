@@ -88,23 +88,28 @@ func RFCCall(pool *SAPConnectionPool) gin.HandlerFunc {
 		}
 		var conn *gorfc.Connection
 		if ok {
+			utils.Logger.Printf("using onetime connectoin")
 			cf := config.LoadConfig()
 			cf["User"] = username
 			cf["Passwd"] = password
-			conn, err := gorfc.ConnectionFromParams(cf)
+			con, err := gorfc.ConnectionFromParams(cf)
 			if err != nil {
 				utils.Logger.Printf("Connection error: %v", err)
 				c.JSON(http.StatusInternalServerError, gin.H{"error": "SAP connection failed"})
 				return
 			}
+			conn = con
 			defer conn.Close()
-		}else{
-			conn, err := pool.GetConnection()
+		} else {
+			utils.Logger.Printf("using pool connectoin")
+			con, err := pool.GetConnection()
+
 			if err != nil {
 				utils.Logger.Printf("Error when get pool connection %s: %v", funcName, err)
 				c.JSON(500, gin.H{"error": err.Error()})
 				return
 			}
+			conn = con
 			defer pool.ReleaseConnection(conn)
 		}
 		funDesc, err := conn.GetFunctionDescription(funcName)

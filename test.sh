@@ -24,6 +24,12 @@ curl -X POST http://localhost:8080/rfc/call?fname=/SDF/E2E_DISPATCHED_COLLECTOR 
     "DATA_PROVIDER": "/SDF/E2E_ICM_INFO"
 }'
 
+curl -X POST http://localhost:8080/rfc/call?fname=/SDF/E2E_DISPATCHED_COLLECTOR \
+-H "Content-Type: application/json" \
+-d '{
+    "DATA_PROVIDER": "/SDF/E2E_ICM_INFO"
+}'
+
 curl -X POST http://localhost:8080/rfc/call1?fname=/SDF/E2E_DISPATCHED_COLLECTOR \
 -u "wangws:wwsheng" \
 -H "Content-Type: application/json" \

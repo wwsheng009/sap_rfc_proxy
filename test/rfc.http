@@ -1,0 +1,44 @@
+
+### Call
+POST http://localhost:8080/rfc/call?fname=STFC_STRUCTURE HTTP/1.1
+content-type: application/json
+
+{
+    "IMPORTSTRUCT":{
+        "RFCFLOAT": 1.23456789,
+        "RFCCHAR1": "A",
+        "RFCCHAR2": "BC",
+        "RFCCHAR4": "ÄBC",
+        "RFCINT1":  1,
+        "RFCINT2":  2,
+        "RFCINT4":  999999999,
+        "RFCTIME":  "080102",
+        "RFCDATE":  "20241210",
+        "RFCDATA1": "HELLÖ SÄP",
+        "RFCDATA2": "DATA222"
+    }
+}
+
+### Call
+POST http://localhost:8080/rfc/call?fname=/SDF/E2E_DISPATCHED_COLLECTOR HTTP/1.1
+content-type: application/json
+
+{
+    "DATA_PROVIDER": "/SDF/E2E_ICM_INFO"
+}
+
+
+### Call function use the secret
+
+POST http://localhost:8080/rfc/call?fname=/SDF/E2E_DISPATCHED_COLLECTOR HTTP/1.1
+content-type: application/json
+Authorization: {{$dotenv PRODSECRET}}
+
+{
+    "DATA_PROVIDER": "/SDF/E2E_ICM_INFO"
+}
+
+### get Function meta
+
+GET http://localhost:8080/rfc/meta?fname=STFC_STRUCTURE
+Authorization: {{$dotenv PRODSECRET}}
