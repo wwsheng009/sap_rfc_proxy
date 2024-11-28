@@ -1,5 +1,6 @@
-//go:build (linux && cgo) || (amd64 && cgo) || (darwin && cgo)
-// +build linux,cgo amd64,cgo darwin,cgo
+// go:build (linux && cgo) || (amd64 && cgo) || (darwin && cgo) || (windows && cgo)
+//go:build (linux && cgo) || (amd64 && cgo) || (darwin && cgo) || (windows && cgo)
+// +build linux,cgo amd64,cgo darwin,cgo windows,cgo
 
 // Package gorfc provides SAP NetWeawer RFC SDK client bindings for GO
 package gorfc
@@ -23,8 +24,8 @@ package gorfc
 // todo MD ? -lpthread -lm
 // todo -nologo -W3 -Z7  -GL -O2 -Oy- /we4552 /we4700 /we4789
 
-#cgo windows CFLAGS: -IC:/Tools/nwrfcsdk/include/
-#cgo windows LDFLAGS: -LC:/Tools/nwrfcsdk/lib/ -lsapnwrfc -llibsapucum
+#cgo windows CFLAGS: -IE:/sap/nwrfc750P_15-70002755/nwrfcsdk/include/
+#cgo windows LDFLAGS: -LE:/sap/nwrfc750P_15-70002755/nwrfcsdk/lib/ -lsapnwrfc -llibsapucum
 
 #cgo windows LDFLAGS: -O2 -g -pthread -pie -fPIE
 #cgo windows LDFLAGS: -OPT:REF -LTCG
@@ -40,8 +41,8 @@ package gorfc
 #cgo linux CFLAGS: -Wall -Wno-uninitialized -Wno-long-long
 #cgo linux CFLAGS: -Wcast-align -Wno-unused-variable
 
-#cgo linux CFLAGS: -IE:/sap/nwrfc750P_15-70002755/nwrfcsdk/include
-#cgo linux LDFLAGS: -LE:/sap/nwrfc750P_15-70002755/nwrfcsdk/lib -lsapnwrfc -lsapucum
+#cgo linux CFLAGS: -I/mnt/e/sap/nwrfc750P_15-linux/nwrfcsdk/include
+#cgo linux LDFLAGS: -L/mnt/e/sap/nwrfc750P_15-linux/nwrfcsdk/lib -lsapnwrfc -lsapucum
 
 #cgo linux LDFLAGS: -O2 -g -pthread
 
@@ -52,9 +53,9 @@ package gorfc
 #cgo darwin CFLAGS: -fexceptions -funsigned-char -fno-strict-aliasing -fPIC -pthread -std=c17 -mmacosx-version-min=10.15
 #cgo darwin CFLAGS: -fno-omit-frame-pointer
 
-#cgo darwin CFLAGS: -IE:/sap/nwrfc750P_15-70002755/nwrfcsdk/include
-#cgo darwin LDFLAGS: -LE:/sap/nwrfc750P_15-70002755/nwrfcsdk/lib -lsapnwrfc -lsapucum
-#cgo darwin LDFLAGS: -Wl,-rpath,E:/sap/nwrfc750P_15-70002755/nwrfcsdk/lib
+#cgo darwin CFLAGS: -I/mnt/e/sap/nwrfc750P_15-linux/nwrfcsdk/include
+#cgo darwin LDFLAGS: -L/mnt/e/sap/nwrfc750P_15-linux/nwrfcsdk/lib -lsapnwrfc -lsapucum
+#cgo darwin LDFLAGS: -Wl,-rpath,/mnt/e/sap/nwrfc750P_15-linux/nwrfcsdk/lib
 
 #cgo darwin LDFLAGS: -O2 -g -pthread
 #cgo darwin LDFLAGS: -stdlib=libc++
@@ -248,24 +249,24 @@ func fillVariable(cType C.RFCTYPE, container C.RFC_FUNCTION_HANDLE, cName *C.SAP
 			if v, ok := value.(float64); ok {
 				u := uint(v)
 				value = u
-			} 
+			}
 			rc = C.RfcSetInt(container, cName, C.RFC_INT(reflect.ValueOf(value).Uint()), &errorInfo)
 		}
 	case C.RFCTYPE_INT2, C.RFCTYPE_INT, C.RFCTYPE_INT8:
 		if v, ok := value.(float64); ok {
 			u := int(v)
 			value = u
-		} 
+		}
 		rc = C.RfcSetInt(container, cName, C.RFC_INT(reflect.ValueOf(value).Int()), &errorInfo)
 	case C.RFCTYPE_DATE:
 		switch v := value.(type) {
 		case string:
-			dstring := v;
+			dstring := v
 			isValid := IsValidDateYYMMDD(dstring)
 			if !isValid {
 				var goName string
 				goName, err = wrapString(cName, true)
-				errorInfo.code = C.RFC_INVALID_PARAMETER;
+				errorInfo.code = C.RFC_INVALID_PARAMETER
 				err = rfcError(errorInfo, "Not Valid Date String %v when filling %v", dstring, goName)
 				return
 			}
@@ -286,14 +287,14 @@ func fillVariable(cType C.RFCTYPE, container C.RFC_FUNCTION_HANDLE, cName *C.SAP
 	case C.RFCTYPE_TIME:
 		switch v := value.(type) {
 		case string:
-			dstring := v;
+			dstring := v
 			isValid := IsValidTimeHHMMSS(dstring)
 			if !isValid {
 				var goName string
 				goName, err = wrapString(cName, true)
-				errorInfo.code = C.RFC_INVALID_PARAMETER;
+				errorInfo.code = C.RFC_INVALID_PARAMETER
 				err = rfcError(errorInfo, "Not Valid Time String %v when filling %v", dstring, goName)
-				return;
+				return
 			}
 			cValue, err = fillString(dstring)
 			//cLen := C.uint(len(reflect.ValueOf(value).String()))
@@ -356,8 +357,8 @@ func fillStructure(typeDesc C.RFC_TYPE_DESC_HANDLE, container C.RFC_STRUCTURE_HA
 					fieldName := nameValue.String()
 					fieldValue := s.MapIndex(nameValue).Interface()
 					err = fillStructureField(typeDesc, container, fieldName, fieldValue)
-					if err !=nil {
-						return rfcError(errorInfo, "Could not fill field: %v,err: %v",fieldName,err.Error())
+					if err != nil {
+						return rfcError(errorInfo, "Could not fill field: %v,err: %v", fieldName, err.Error())
 					}
 				}
 			} else {
@@ -561,9 +562,12 @@ func wrapTypeDescription(typeDesc C.RFC_TYPE_DESC_HANDLE) (goTypeDesc TypeDescri
 	var nucLength, ucLength C.uint
 	var i, fieldCount C.uint
 
-	typeName := (*C.SAP_UC)(C.malloc((C.size_t)(40 + 1)))
+	typeName := (*C.RFC_CHAR)(C.GoMallocU(30 + 1))
 	*typeName = 0
 	defer C.free(unsafe.Pointer(typeName))
+	// typeName := (*C.RFC_CHAR)(C.malloc(30 + 1))
+	// *typeName = 0
+	// defer C.free(unsafe.Pointer(typeName))
 
 	rc = C.RfcGetTypeName(typeDesc, (*C.RFC_CHAR)(typeName), &errorInfo)
 	if rc != C.RFC_OK {

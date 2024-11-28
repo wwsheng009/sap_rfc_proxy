@@ -1,3 +1,4 @@
 .env
 *.exe
 *.log
+sap_rfc_proxy

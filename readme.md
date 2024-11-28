@@ -84,3 +84,8 @@ export CGO_CPPFLAGS="-I E:/sap/nwrfcsdk/include"
 
 go build
 ```
+
+
+## sap connection parameter
+
+https://help.sap.com/doc/saphelp_nw73ehp1/7.31.19/en-us/48/ce50e418d3424be10000000a421937/frameset.htm

@@ -1,20 +1,148 @@
 package handlers
 
 import (
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"sap_rfc_proxy/config"
 	"sap_rfc_proxy/utils"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 
 	"sap_rfc_proxy/gorfc"
 
 	"github.com/gin-gonic/gin"
 )
 
-func RFCCall(c *gin.Context) {
+type SAPConnectionPool struct {
+	pool chan *gorfc.Connection
+	mu   sync.Mutex
+}
+
+func NewSAPConnectionPool(size int) (*SAPConnectionPool, error) {
+	pool := make(chan *gorfc.Connection, size)
+
+	// Initialize connections and add them to the pool
+	for i := 0; i < size; i++ {
+		conf := config.LoadConfig()
+		conf["Dest"] = fmt.Sprintf("%d", i)
+		conn, err := gorfc.ConnectionFromParams(conf)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create SAP connection: %v", err)
+		}
+		pool <- conn
+	}
+
+	return &SAPConnectionPool{pool: pool}, nil
+}
+func (p *SAPConnectionPool) GetConnection() (conn *gorfc.Connection, err error) {
+	select {
+	case conn := <-p.pool:
+		return conn, nil
+	case <-time.After(5 * time.Second):
+		err = fmt.Errorf("timeout while getting connection from pool")
+		return
+	}
+}
+func (p *SAPConnectionPool) ReleaseConnection(conn *gorfc.Connection) {
+	p.pool <- conn
+}
+
+func (p *SAPConnectionPool) CloseAllConnections() {
+	close(p.pool) // Close the pool channel to signal that no more connections will be added
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	// Iterate over the pool and close each connection (simulate cleanup if needed)
+	utils.Logger.Printf("Releasing all connections...")
+	for conn := range p.pool {
+		// The gorfc package may not have a `Close()` method directly,
+		// but you can handle cleanup here if required.
+		// Assuming `conn` can be closed or properly cleaned up:
+		err := conn.Close() // Add a Close method if it exists in your RFC package
+		if err != nil {
+			utils.Logger.Printf("Error closing connection: %v", err)
+		}
+	}
+	utils.Logger.Printf("All connections released.")
+}
+
+func RFCCall(pool *SAPConnectionPool) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		funcName := c.Query("fname")
+
+		username, password, ok := getBasicAuth(c)
+		// if!ok {
+		// 	utils.Logger.Println("Unauthorized access")
+		// 	c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		// 	return
+		// }
+
+		var payload map[string]interface{}
+		if err := c.BindJSON(&payload); err != nil {
+			utils.Logger.Printf("Invalid request payload: %v", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
+			return
+		}
+		var conn *gorfc.Connection
+		if ok {
+			cf := config.LoadConfig()
+			cf["User"] = username
+			cf["Passwd"] = password
+			conn, err := gorfc.ConnectionFromParams(cf)
+			if err != nil {
+				utils.Logger.Printf("Connection error: %v", err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "SAP connection failed"})
+				return
+			}
+			defer conn.Close()
+		}else{
+			conn, err := pool.GetConnection()
+			if err != nil {
+				utils.Logger.Printf("Error when get pool connection %s: %v", funcName, err)
+				c.JSON(500, gin.H{"error": err.Error()})
+				return
+			}
+			defer pool.ReleaseConnection(conn)
+		}
+		funDesc, err := conn.GetFunctionDescription(funcName)
+		if err != nil {
+			utils.Logger.Printf("RFC function description error for function %s: %v", funcName, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		var payload2 interface{} = payload
+
+		payload2, err = convertMapObject(payload2, funDesc)
+		if err != nil {
+			utils.Logger.Printf("Failed to convert interface{} to map[string]interface{}")
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		payload, _ = payload2.(map[string]interface{})
+
+		result, err := conn.Call(funcName, payload)
+		if err != nil {
+			utils.Logger.Printf("RFC call error for function %s: %v", funcName, err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+
+		utils.Logger.Printf("Function %s called successfully", funcName)
+		c.JSON(http.StatusOK, map[string]interface{}{"data": result})
+	}
+}
+
+func RFCCall1(c *gin.Context) {
 	funcName := c.Query("fname")
+	username, password, ok := getBasicAuth(c)
+	if !ok {
+		utils.Logger.Println("Unauthorized access")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
 
 	var payload map[string]interface{}
 	if err := c.BindJSON(&payload); err != nil {
@@ -22,17 +150,19 @@ func RFCCall(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid payload"})
 		return
 	}
-
-	conn, err := gorfc.ConnectionFromParams(config.LoadConfig())
+	cf := config.LoadConfig()
+	cf["User"] = username
+	cf["Passwd"] = password
+	conn, err := gorfc.ConnectionFromParams(cf)
 	if err != nil {
 		utils.Logger.Printf("Connection error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "SAP connection failed"})
 		return
 	}
-	defer conn.Close()
+
 	funDesc, err := conn.GetFunctionDescription(funcName)
 	if err != nil {
-		utils.Logger.Printf("RFC call error for function %s: %v", funcName, err)
+		utils.Logger.Printf("RFC function description error for function %s: %v", funcName, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
@@ -45,21 +175,51 @@ func RFCCall(c *gin.Context) {
 		return
 	}
 	payload, _ = payload2.(map[string]interface{})
-
 	result, err := conn.Call(funcName, payload)
 	if err != nil {
 		utils.Logger.Printf("RFC call error for function %s: %v", funcName, err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
 	utils.Logger.Printf("Function %s called successfully", funcName)
 	c.JSON(http.StatusOK, map[string]interface{}{"data": result})
+}
+func getBasicAuth(c *gin.Context) (username, password string, ok bool) {
+	authHeader := c.GetHeader("Authorization")
+	if authHeader == "" || !strings.HasPrefix(authHeader, "Basic ") {
+		return "", "", false
+	}
+
+	// Strip "Basic " prefix
+	encodedCredentials := strings.TrimPrefix(authHeader, "Basic ")
+
+	// Decode the base64 string
+	decodedBytes, err := base64.StdEncoding.DecodeString(encodedCredentials)
+	if err != nil {
+		return "", "", false
+	}
+
+	// Split the decoded string into username and password
+	credentials := strings.SplitN(string(decodedBytes), ":", 2)
+	if len(credentials) != 2 {
+		return "", "", false
+	}
+
+	return credentials[0], credentials[1], true
 }
 
 func RFCmeta(c *gin.Context) {
 	funcName := c.Query("fname")
-	conn, err := gorfc.ConnectionFromParams(config.LoadConfig())
+	username, password, ok := getBasicAuth(c)
+	if !ok {
+		utils.Logger.Println("Unauthorized access")
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
+		return
+	}
+	cf := config.LoadConfig()
+	cf["User"] = username
+	cf["Passwd"] = password
+	conn, err := gorfc.ConnectionFromParams(cf)
 	if err != nil {
 		utils.Logger.Printf("Connection error: %v", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "SAP connection failed"})
@@ -80,6 +240,7 @@ func RFCmeta(c *gin.Context) {
 // try to convert the input map to the correct type
 // the input is interface{},it's converted from the json object
 func convertMapObject(input interface{}, funDesc gorfc.FunctionDescription) (output interface{}, err error) {
+	return input, nil
 
 	switch in := input.(type) {
 	case map[string]interface{}:
