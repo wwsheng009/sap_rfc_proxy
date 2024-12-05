@@ -84,3 +84,38 @@ CGO_LDFLAGS="-L E:/sap/nwrfcsdk/lib" CGO_CFLAGS="-I E:/sap/nwrfcsdk/include" go 
 ## sap connection parameter
 
 https://help.sap.com/doc/saphelp_nw73ehp1/7.31.19/en-us/48/ce50e418d3424be10000000a421937/frameset.htm
+
+
+## add env variable
+
+
+```sh
+vi ~/.bashrc
+
+## append lines to the end of the file.
+
+export SAPNWRFC_HOME=/root/projects/nwrfcsdk
+export LD_LIBRARY_PATH=LD_LIBRARY_PATH:$SAPNWRFC_HOME/lib
+```
+
+## service
+
+```sh
+mkdir -p /opt/sap_rfc_proxy
+cp ./sap_rfc_proxy /opt/sap_rfc_proxy/
+
+cp ./.env.sample /opt/sap_rfc_proxy/.env
+
+sudo chmod +x /opt/sap_rfc_proxy/sap_rfc_proxy
+
+cp ./sap_rfc_proxy.service /etc/systemd/system/sap_rfc_proxy.service
+
+sudo systemctl daemon-reload
+
+sudo systemctl start sap_rfc_proxy.service
+sudo systemctl stop sap_rfc_proxy.service
+sudo systemctl restart sap_rfc_proxy.service
+sudo systemctl status sap_rfc_proxy.service
+sudo systemctl enable sap_rfc_proxy.service
+sudo systemctl disable sap_rfc_proxy.service
+```

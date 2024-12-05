@@ -3,9 +3,14 @@ Description=sap rfc proxy
 After=network.target
 
 [Service]
-ExecStart=./sap_rfc_proxy
+
+Environment="SAPNWRFC_HOME=/root/projects/nwrfcsdk"
+Environment="LD_LIBRARY_PATH=LD_LIBRARY_PATH:/root/projects/nwrfcsdk/lib"
+
+ExecStart=/opt/sap_rfc_proxy/sap_rfc_proxy
+
 ExecStop=/bin/kill -s QUIT $MAINPID
-WorkingDirectory=/data/n9e
+WorkingDirectory=/opt/sap_rfc_proxy
 
 RestartSec=5s
 Restart=always
