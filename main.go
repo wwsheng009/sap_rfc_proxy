@@ -24,19 +24,35 @@ func main() {
 	if err != nil {
 		utils.Logger.Fatalf("Error creating SAP connection pool: %v", err)
 	}
+	port := os.Getenv("PORT") // Get the port from the environment variable
+	if port == "" {
+		port = "8080"
+	}
+
 	r := gin.Default()
 	r.POST("/rfc/call", handlers.RFCCall(pool))
 	r.POST("/rfc/call1", handlers.RFCCall1)
 	r.GET("/rfc/meta", handlers.RFCmeta)
+	r.GET("/", func(ctx *gin.Context) {
+		htmlContent := `
+		<!DOCTYPE html>
+		<html>
+		<head>
+			<title>SAP RFC PROXY</title>
+		</head>
+		<body>
+			<h1>SAP RFC PROXY!</h1>
+			<p>post request to url http://localhost:` + port + `/rfc/call?fname=<your_function_name>. the parameters set as payload map object</p>
+		</body>
+		</html>`
+		ctx.Data(200, "text/html; charset=utf-8", []byte(htmlContent))
+	})
 
 	// Channel to listen for shutdown signals
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	// Run the server in a goroutine
-	port := os.Getenv("PORT") // Get the port from the environment variable
-	if port == "" {
-		port = "8080"
-	}
+
 	go func() {
 		utils.Logger.Println("Starting server on port 8080...")
 		if err := r.Run(":" + port); err != nil {

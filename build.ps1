@@ -8,7 +8,7 @@ echo "build yao"
 
 # Build the Go program with the updated environment variables
 $env:CGO_LDFLAGS = "-L $env:SAP_NWRFC_SDK_PATH/lib"
-# $env:CGO_CFLAGS = "-I $env:SAP_NWRFC_SDK_PATH/include"
+$env:CGO_CFLAGS = "-I $env:SAP_NWRFC_SDK_PATH/include"
 $env:CGO_CPPFLAGS = "-I $env:SAP_NWRFC_SDK_PATH/include"
 
 # Run the Go build command
