@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"os/signal"
 	"sap_rfc_proxy/handlers"
@@ -8,9 +9,14 @@ import (
 	"syscall"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file")
+	}
 
 	utils.InitLogger()
 	defer utils.CloseLogger()
@@ -27,9 +33,13 @@ func main() {
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	// Run the server in a goroutine
+	port := os.Getenv("PORT") // Get the port from the environment variable
+	if port == "" {
+		port = "8080"
+	}
 	go func() {
 		utils.Logger.Println("Starting server on port 8080...")
-		if err := r.Run(":8080"); err != nil {
+		if err := r.Run(":" + port); err != nil {
 			utils.Logger.Fatalf("Server failed to start: %v", err)
 		}
 	}()
