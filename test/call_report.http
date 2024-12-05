@@ -1,0 +1,16 @@
+
+
+### Call function use the secret
+
+POST http://localhost:8080/rfc/call?fname=ZVI_RFC_CALL_REPORT HTTP/1.1
+content-type: application/json
+Authorization: {{$dotenv PRODSECRET}}
+
+{
+    "TCODE": "mb52"
+}
+
+### get Function meta
+
+GET http://localhost:8080/rfc/meta?fname=ZVI_RFC_CALL_REPORT
+Authorization: {{$dotenv PRODSECRET}}

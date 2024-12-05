@@ -61,14 +61,11 @@ https://raw.githubusercontent.com/SAP/gorfc/refs/heads/master/gorfc/gorfc_test.g
 https://sap.github.io/PyRFC/install.html#install-c-connector
 
 Set the SAPNWRFC_HOME env variable: SAPNWRFC_HOME=c:\nwrfcsdk
-Include the lib directory to the library search path on Windows: PATH=PATH;%SAPNWRFC_HOME%\lib
+Include the lib directory to the library search path: PATH=PATH;%SAPNWRFC_HOME%\lib
 ```sh
-SAPNWRFC_HOME=c:\nwrfcsdk
-LD_LIBRARY_PATH="/usr/sap/nwrfcsdk/lib"
-CGO_LDFLAGS="-L /usr/sap/nwrfcsdk/lib"
-CGO_CFLAGS="-I /usr/sap/nwrfcsdk/include"
-CGO_LDFLAGS_ALLOW=.*
-CGO_CFLAGS_ALLOW=.*
+# for run
+export SAPNWRFC_HOME=$HOME/nwrfcsdk
+export LD_LIBRARY_PATH="/usr/local/sap/nwrfcsdk/lib"
 ```
 befure build the go project,set the sap rfc sdk path.
 
@@ -79,10 +76,8 @@ need to overwrite the environment variable.
 
 ```sh
 export SAPNWRFC_HOME="E:/sap/nwrfcsdk/lib"
-export CGO_LDFLAGS="-L E:/sap/nwrfcsdk/lib"
-export CGO_CPPFLAGS="-I E:/sap/nwrfcsdk/include"
 
-go build
+CGO_LDFLAGS="-L E:/sap/nwrfcsdk/lib" CGO_CFLAGS="-I E:/sap/nwrfcsdk/include" go build
 ```
 
 

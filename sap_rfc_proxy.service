@@ -1,0 +1,15 @@
+[Unit]
+Description=sap rfc proxy
+After=network.target
+
+[Service]
+ExecStart=./sap_rfc_proxy
+ExecStop=/bin/kill -s QUIT $MAINPID
+WorkingDirectory=/data/n9e
+
+RestartSec=5s
+Restart=always
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
