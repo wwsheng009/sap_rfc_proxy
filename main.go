@@ -42,7 +42,7 @@ func main() {
 		</head>
 		<body>
 			<h1>SAP RFC PROXY!</h1>
-			<p>post request to url http://localhost:` + port + `/rfc/call?fname=<your_function_name>. the parameters set as payload map object</p>
+			<p>post request to url http://localhost:` + port + `/rfc/call?fname=rfc_function_name. the parameters set as payload map object</p>
 		</body>
 		</html>`
 		ctx.Data(200, "text/html; charset=utf-8", []byte(htmlContent))
